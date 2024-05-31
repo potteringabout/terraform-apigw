@@ -1,0 +1,123 @@
+﻿name: Terraform Plan
+description: Plan terraform workflows to environment
+inputs:
+  ENVIRONMENT_NAME:
+    description: "Environment Name"
+    required: true
+  ROLE_DURATION_SECONDS:
+    description: "Role duration"
+    required: false
+  ROLE_SESSION_NAME:
+    description: "Role session name"
+    required: false
+  AWS_REGION:
+    default: eu-west-2
+    description: region
+    required: true
+  TF_STATE_BUCKET:
+    description: "AWS S3 bucket for Terraform state"
+    required: true
+  TF_DYNAMO_TABLE:
+    description: "AWS DynamoDB table for Terraform lock file"
+    required: true
+  TF_VERSION:
+    description: "Terraform version"
+    required: false
+    default: latest
+  IDENTITY_ROLE:
+    description: "Role for Aws"
+    required: true
+  INGRESS_IPS:
+    description: ingress ips
+    required: true
+
+outputs:
+  PLAN_RESULT:
+    description: "Result code of the plan step"
+    value: ${{ steps.plan.outputs.exitcode }}
+
+runs:
+  using: "composite"
+  steps:
+    # Set up AWS cli
+    - name: AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-region: ${{ inputs.AWS_REGION }}
+        role-to-assume: ${{ inputs.IDENTITY_ROLE }}
+        role-duration-seconds: ${{ inputs.ROLE_DURATION_SECONDS }}
+        role-session-name: ${{ inputs.ROLE_SESSION_NAME }}
+
+    # Install the latest version of Terraform CLI and configure the Terraform CLI configuration file with a Terraform Cloud user API token
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+       terraform_version: ${{ inputs.TF_VERSION }}
+
+    # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
+    - name: Terraform Init
+      id: init
+      run: |
+        terraform init \
+          -backend-config="region=${{ inputs.AWS_REGION }}" \
+          -backend-config="bucket=${{ inputs.TF_STATE_BUCKET }}" \
+          -backend-config="key=${{ github.repository }}/${{ inputs.ENVIRONMENT_NAME }}/terraform.tfstate" \
+          -backend-config="dynamodb_table=${{ inputs.TF_DYNAMO_TABLE }}" \
+          -backend-config="encrypt=true"
+      shell: bash
+
+    # Validate terraform
+    - name: Terraform Validate
+      id: validate
+      run: terraform validate
+      shell: bash
+
+    # Checks that all Terraform configuration files adhere to a canonical format
+    - name: Terraform Format
+      id: fmt
+      run: terraform fmt -check
+      shell: bash
+
+    # Plan changes to environment
+    - name: Terraform Plan
+      id: plan
+      run: terraform plan -var-file="./variables/input.tfvars.json" -var "deployment_repo=${{ github.repositoryUrl }}" -var "ingress_ips=${{ inputs.INGRESS_IPS }}" -detailed-exitcode -no-color
+      shell: bash
+      continue-on-error: true
+
+    - name: Check for Terraform Plan Failure
+      if: steps.plan.outputs.exitcode == 1
+      run: exit 1
+      shell: bash
+
+    # Add resulting output to PR
+    - name: Update Pull Request
+      uses: actions/github-script@v6
+      if: github.event_name == 'pull_request'
+      env:
+        PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
+        ENVIRONMENT: ${{ inputs.ENVIRONMENT_NAME }}
+      with:
+        github-token: ${{ github.token }}
+        script: |
+          const output = `### ${{ env.ENVIRONMENT }} - Terraform Plan
+          #### Terraform Initialization ${{ steps.init.outcome }}
+          #### Terraform Validation ${{ steps.validate.outcome }}
+          #### Terraform Format and Style ${{ steps.fmt.outcome }}
+          #### Terraform Plan ${{ steps.plan.outcome }}
+
+          <details><summary>${{ env.ENVIRONMENT }} - Plan</summary>
+
+          ${{ env.PLAN }}
+
+
+          </details>
+
+          * Triggered by: @${{ github.actor }}, Action: ${{ github.event_name }}`;
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: output
+          })

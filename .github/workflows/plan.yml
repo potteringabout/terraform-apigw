@@ -1,0 +1,99 @@
+name: "Plan"
+on:
+  workflow_dispatch:
+    #checkov:skip=CKV_GHA_7:Deliberately added input parameters for specfic deployments
+    inputs:
+      ENVIRONMENT_NAME:
+        description: "Environment to perform terraform plan"
+        required: true
+        type: environment
+      ROLE_DURATION_SECONDS:
+        description: "Role duration"
+        required: false
+        type: number
+        default: 3600
+      ROLE_SESSION_NAME:
+        description: "Role session name"
+        required: false
+        type: string
+        default: ghmanual
+      INGRESS_IPS:
+        description: "The ingress IP ( IPs - comma separated ) to allow connectivity from ( Eg. 1.2.3.4/32)"
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+  issues: write
+  pull-requests: write
+  deployments: write
+jobs:
+  plan:
+    name: "plan-${{ inputs.ENVIRONMENT_NAME }}"
+    environment: ${{ inputs.ENVIRONMENT_NAME }}
+    runs-on: ubuntu-latest
+
+    # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3
+
+      # Get TF variables from GH environment
+      - name: Get TF vars
+        uses: ./.github/actions/get-vars
+        with:
+          CONFIG: ${{ vars.CONFIG }}
+
+
+      - name: Plan deployment to ${{ inputs.ENVIRONMENT_NAME }}
+        id: plan
+        uses: ./.github/actions/plan
+        with:
+          ENVIRONMENT_NAME: ${{ inputs.ENVIRONMENT_NAME }}
+          ROLE_DURATION_SECONDS: ${{ inputs.ROLE_DURATION_SECONDS }}
+          ROLE_SESSION_NAME: "${{ inputs.ROLE_SESSION_NAME }}-${{ inputs.ENVIRONMENT_NAME }}"
+          TF_VERSION: ${{ vars.TF_VERSION }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+          TF_DYNAMO_TABLE: ${{ vars.TF_DYNAMO_TABLE }}
+          IDENTITY_ROLE: "${{ secrets.IDENTITY_ROLE }}"
+          INGRESS_IPS: ${{ inputs.INGRESS_IPS }}
+
+      - name: Remove deployment for terraform plan
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const sleep = async (milliseconds) => {
+              await new Promise(resolve => {
+                return setTimeout(resolve, milliseconds)
+              });
+            };
+            await sleep(10000);
+
+            const deployments = await github.rest.repos.listDeployments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha
+            });
+            await Promise.all(
+              deployments.data.map(async (deployment) => {
+                await github.rest.repos.createDeploymentStatus({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  deployment_id: deployment.id,
+                  state: 'inactive'
+                });
+                return github.rest.repos.deleteDeployment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  deployment_id: deployment.id
+                });
+              })
+            );
+    outputs:
+      changes_present: ${{ steps.plandeploy.outputs.PLAN_RESULT }}

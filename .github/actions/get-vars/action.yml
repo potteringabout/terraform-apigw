@@ -1,0 +1,17 @@
+name: Get Terraform Vars
+description: Get TF variables from GH environment
+inputs:
+  CONFIG:
+    description: "TF variables from GH environment"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Get TF Vars
+      id: get_vars
+      run: |
+        mkdir -p variables
+        printf '${{ inputs.CONFIG }}' > ./variables/input.tfvars.json
+        cat ./variables/input.tfvars.json
+      shell: bash

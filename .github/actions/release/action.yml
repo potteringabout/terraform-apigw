@@ -1,0 +1,10 @@
+name: Release Tag
+description: Release tag on push to main
+author: Platform Engineering
+inputs:
+  message:
+    description: A message for the Git tag.
+    required: false
+runs:
+  using: docker
+  image: Dockerfile

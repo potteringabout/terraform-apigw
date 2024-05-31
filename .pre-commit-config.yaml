@@ -1,0 +1,36 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      #- id: no-commit-to-branch
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+        exclude: CHANGELOG.md
+      - id: check-yaml
+      - id: check-executables-have-shebangs
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.81.0
+    hooks:
+      - id: terraform_docs
+        args:
+          - --hook-config=--path-to-file=README.md
+          - --hook-config=--add-to-existing-file=true
+          - --hook-config=--create-file-if-not-exist=true
+  #- repo: https://github.com/terraform-docs/terraform-docs
+  #  rev: "v0.16.0"
+  #  hooks:
+  #    - id: terraform-docs-go
+  #      entry: export GOFLAGS="-buildvcs=false"
+  #      args: ["markdown", "table", "--output-file", "README.md", "./"]
+  - repo: https://github.com/gruntwork-io/pre-commit
+    rev: v0.1.22
+    hooks:
+      - id: terraform-fmt
+      - id: tflint
+  - repo: https://github.com/bridgecrewio/checkov.git
+    rev: "2.3.296"
+    hooks:
+      - id: checkov
