@@ -23,18 +23,18 @@ resource "aws_vpc_security_group_ingress_rule" "ingress" {
   security_group_id = aws_security_group.alb.id
   #cidr_ipv4         = "0.0.0.0/0"
   prefix_list_id = aws_ec2_managed_prefix_list.allowed_ips.id
-  from_port      = 80
+  from_port      = var.ingress_port
   ip_protocol    = "tcp"
-  to_port        = 80
-  description    = "Allow ingress traffic to port 80"
+  to_port        = var.ingress_port
+  description    = "Allow ingress traffic to port ${var.ingress_port}"
 }
 
-resource "aws_vpc_security_group_egress_rule" "allow_3128" {
+resource "aws_vpc_security_group_egress_rule" "egress" {
   security_group_id = aws_security_group.alb.id
   cidr_ipv4         = "0.0.0.0/0"
-  from_port         = 3128
   ip_protocol       = "tcp"
-  to_port           = 3128
+  from_port         = var.target_group["port"]
+  to_port           = var.target_group["port"]
   description       = "Allow egress traffic to squid"
 
 }
@@ -52,7 +52,7 @@ resource "aws_lb" "load_balancer" {
   #checkov:skip=CKV2_AWS_20: "Ensure that ALB redirects HTTP requests into HTTPS ones"
   #checkov:skip=CKV2_AWS_28: "Ensure public facing ALB are protected by WAF"
   name               = var.lb["name"]
-  internal           = false
+  internal           = var.internal
   load_balancer_type = "network"
   subnets            = var.subnet_ids
   security_groups    = [aws_security_group.alb.id]

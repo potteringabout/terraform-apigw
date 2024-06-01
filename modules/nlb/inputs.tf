@@ -12,6 +12,11 @@ variable "lb" {
   })
 }
 
+variable "internal" {
+  type = bool
+  default = true
+}
+
 variable "target_group" {
   type = object({
     name = string
@@ -21,4 +26,8 @@ variable "target_group" {
 
 variable "ingress_ips" {
   type = list(string)
+}
+
+variable "ingress_port" {
+  type = number
 }
