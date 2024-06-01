@@ -11,4 +11,5 @@ class Greeting (Resource):
 api.add_resource(Greeting, '/') # Route_1
 
 if __name__ == '__main__':
+  print("Starting container")
   app.run('0.0.0.0','80')
