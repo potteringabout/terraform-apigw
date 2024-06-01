@@ -166,11 +166,11 @@ module "cluster" {
 }
 
 module "lb" {
-  source      = "./modules/nlb"
-  vpc_id      = module.network.vpc_id
-  subnet_ids  = module.network.access_subnet_ids
-  lb          = local.lb
-  ingress_ips = split(",", var.ingress_ips)
+  source       = "./modules/nlb"
+  vpc_id       = module.network.vpc_id
+  subnet_ids   = module.network.access_subnet_ids
+  lb           = local.lb
+  ingress_ips  = split(",", var.ingress_ips)
   ingress_port = 80
   internal     = true
   target_group = {

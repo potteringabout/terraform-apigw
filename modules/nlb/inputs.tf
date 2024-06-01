@@ -13,7 +13,7 @@ variable "lb" {
 }
 
 variable "internal" {
-  type = bool
+  type    = bool
   default = true
 }
 
