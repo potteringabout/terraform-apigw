@@ -77,25 +77,35 @@ variable "owner" {
 
 variable "project" {
   description = "Project abbreviation in lower case"
-  default     = "ss"
+  default     = "potteringabout"
   type        = string
 }
 
 variable "project_full" {
   description = "The project name in full"
-  default     = "Shared Services"
+  default     = "Potteringabout"
   type        = string
 }
 
 
-variable "squid_container_image" {
+variable "app" {
   type        = string
-  description = "The Squid container to use"
+  description = "The app name"
 }
 
-variable "squid_service_name" {
+variable "app_port" {
+  type        = number
+  description = "The app port"
+}
+
+variable "container_image" {
   type        = string
-  description = "The Squid service name"
+  description = "The container to use"
+}
+
+variable "service_name" {
+  type        = string
+  description = "The service name"
 }
 
 variable "ingress" {
