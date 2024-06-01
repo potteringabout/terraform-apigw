@@ -41,13 +41,13 @@ resource "aws_security_group" "ecs" {
 
 }
 
-resource "aws_vpc_security_group_ingress_rule" "allow_3128" {
+resource "aws_vpc_security_group_ingress_rule" "allow" {
   security_group_id            = aws_security_group.ecs.id
   referenced_security_group_id = var.load_balancer["security_group_id"]
-  from_port                    = 3128
+  from_port                    = 80
   ip_protocol                  = "tcp"
-  to_port                      = 3128
-  description                  = "Allow ingress traffic to port squid from ALB"
+  to_port                      = 80
+  description                  = "Allow ingress traffic to port from ALB"
 
 }
 

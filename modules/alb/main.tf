@@ -29,12 +29,12 @@ resource "aws_vpc_security_group_ingress_rule" "ingress" {
   description    = "Allow ingress traffic to port 80"
 }
 
-resource "aws_vpc_security_group_egress_rule" "allow_3128" {
+resource "aws_vpc_security_group_egress_rule" "allow" {
   security_group_id = aws_security_group.alb.id
   cidr_ipv4         = "0.0.0.0/0"
-  from_port         = 3128
+  from_port         = 80
   ip_protocol       = "tcp"
-  to_port           = 3128
+  to_port           = 80
   description       = "Allow egress traffic to squid"
 
 }
