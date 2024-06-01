@@ -6,6 +6,7 @@ api = Api(app)
 
 class Greeting (Resource):
   def get(self):
+    print("Serving request")
     return {"message": "Hello World"}
 
 api.add_resource(Greeting, '/') # Route_1
