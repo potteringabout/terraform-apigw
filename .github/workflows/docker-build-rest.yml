@@ -1,0 +1,69 @@
+name: Build and Deploy to ECR
+
+on:
+  workflow_dispatch:
+    #checkov:skip=CKV_GHA_7:Deliberately added input parameters for specfic deployments
+    inputs:
+      environment:
+        type: environment
+        description: Select the environment
+      APP:
+        description: "The APP name. ( The folder name in the app directory)"
+        required: true
+        type: string
+      TAG:
+        description: "Image TAG"
+        required: true
+        type: string
+      ROLE_SESSION_NAME:
+        description: "Role session name"
+        required: false
+        type: string
+        default: ghmanual
+
+permissions:
+  id-token: write
+  contents: read
+  issues: write
+  pull-requests: write
+  deployments: write
+
+jobs:
+  pull-push:
+    name: "build-image-${{ inputs.environment }}"
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: ${{ secrets.IDENTITY_ROLE }}
+          role-session-name: ${{ vars.ROLE_SESSION_NAME }}
+
+      - name: AWS Credentials Assume
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: ${{ vars.TARGET_ROLE }}
+          role-session-name: ${{ vars.ROLE_SESSION_NAME }}
+          role-chaining: true
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push docker image to Amazon ECR
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: ${{ inputs.APP }}
+          #IMAGE_TAG: ${{ github.sha }}
+        run: |
+          cd app/${{ inputs.APP }}
+          docker build -t $REGISTRY/$REPOSITORY:${{ inputs.TAG }} .
+          docker push $REGISTRY/$REPOSITORY:${{ inputs.TAG }}
